@@ -1,5 +1,5 @@
 # Deep-Unfolded-Hybrid-Beamforming-in-Reconfigurable-Intelligent-Surface-MIMO-OFDM-Systems
-- Official repository of [Deep Unfolded Hybrid Beamforming in Reconfigurable Intelligent Surface Aided mmWave MIMO-OFDM Systems]([https://ieeexplore.ieee.org/document/9860799](https://ieeexplore.ieee.org/document/10422799))
+- Official repository of [Deep Unfolded Hybrid Beamforming in Reconfigurable Intelligent Surface Aided mmWave MIMO-OFDM Systems](https://ieeexplore.ieee.org/document/10422799)
 - This repository contains the code and the dataset
 # About
 ## Contents:
