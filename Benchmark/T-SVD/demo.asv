@@ -1,0 +1,134 @@
+%% demo test
+
+clear all;
+
+%% load channel
+
+testing_data1 = load('D:\code\deep_unfolding\benson_test\code\WMMSE_MO\python_RIS\training_data\training_data_test\H1_ULA_to_USPA_Nt_64_Nr_64_Ns_2_Training_data_H.mat');
+testing_data2 = load('D:\code\deep_unfolding\benson_test\code\WMMSE_MO\python_RIS\training_data\training_data_test\H2_USPA_to_ULA_Nt_64_Nr_32_Ns_2_Training_data_H.mat');
+
+% load steering vector (associated with RIS)
+ar_RIS_data = load('D:\code\deep_unfolding\benson_test\code\WMMSE_MO\python_RIS\training_data\training_data_test\ar_RIS_ULA_to_USPA_Nt_64_Nr_64_Ns_2_Steering_vector_H.mat');
+at_RIS_data = load('D:\code\deep_unfolding\benson_test\code\WMMSE_MO\python_RIS\training_data\training_data_test\at_RIS_USPA_to_ULA_Nt_64_Nr_32_Ns_2_Steering_vector_H.mat');
+
+% load channel
+alpha_data = load('D:\code\deep_unfolding\benson_test\code\WMMSE_MO\python_RIS\training_data\training_data_test\alpha_ULA_to_USPA_Channel_gain_H.mat');
+beta_data = load('D:\code\deep_unfolding\benson_test\code\WMMSE_MO\python_RIS\training_data\training_data_test\beta_USPA_to_ULA_Channel_gain_H.mat');
+
+
+channel_1 = testing_data1.H;
+channel_2 = testing_data2.H;
+ar_RIS = ar_RIS_data.ar_RIS;
+at_RIS = at_RIS_data.at_RIS;
+alpha = alpha_data.alpha;
+beta = beta_data.beta;
+ 
+Nt = 64; % origin_Nt = 64
+Nr = 32; % origin_Nr = 32 
+M_h = 8; M_v = 8; M = M_h*M_v;% origin_M_h = origin_M_v = 8;
+Nt_RF = 4; % origin_Nt_RF = 6 
+Nr_RF = 2; % origin_Nr_RF = 6 
+Ns = 2; % origin_Ns = 4
+Nc = 5; % of clusters
+Nray = 10; % of rays in each cluster
+Nk = 64; % of carriers
+
+path_G = Nc*Nray;% original_path_G = 7;
+path_R = Nc*Nray;% original_path_R = 7;
+
+realization = size(channel_1,4);
+
+% % location
+% BS_loc = [2,0,10];
+% RIS_loc = [0,148,10];
+% UE_loc = [5,150,1.8];
+% K_factor = 1;
+% Rx_dBi = 0;
+% Tx_dBi = 24.5;
+
+% % power setting
+% trans_Pt = 1e-3*10^(30/10); % 30dBm
+% 
+% sigma2 = 1e-3*10^(-90/10);  % -90dBm
+
+
+%% test (Created on Mon Mar 20 14:35:47 2023)
+
+% Assumption: for realization = 20 / subcarrier = 15
+
+path_G = Nc*Nray; % path_G = 7
+path_R = Nc*Nray; % path_R = 7
+
+
+snr_dB = [-10:5:20];
+snr_lin = 10.^(snr_dB/10);
+snr_len = length(snr_lin);
+
+trans_Pt = Ns; 
+
+% sigma2 = 1./snr_lin;
+
+
+
+%% generate channel
+ 
+%         [R,G,gain_G_path,AoD_G,AoA_G,AR_G_irs,AT_G_bs,...
+%     AR_R_re,gain_R_path,AT_R_irs,AoA_R,AoD_R] = gen_Chan_dBi_mis(Nr,Nt,M_h,M_v,...
+%     BS_loc,RIS_loc,UE_loc,K_factor,path_R,path_G,Rx_dBi,Tx_dBi);  % % Tx-antenn gain BS
+
+%% estimated mismatch error channel 
+% beta = 0.5*pi/180;
+%        [est_R,est_G,err_AoD_G,err_AoA_G,est_AR_G_irs,est_AT_G_bs,...
+%             est_AR_R_re,est_AT_R_irs]= gen_Chan_mismatch(Nr,Nt,M_h,M_v,...
+%             path_R,path_G,Rx_dBi,Tx_dBi,gain_G_path,AoD_G,AoA_G,gain_R_path,AoA_R,AoD_R,beta);
+
+
+%% our method (MO => optimal Phi => effective channel)
+R_FD = zeros(snr_len,realization);
+R_HB = zeros(snr_len,realization);
+for s = 1:snr_len
+    snr = snr_lin(s);
+    sigma2 = 1/snr_lin(s);
+    
+    for i = 1:realization
+        fprintf('SNR=%d NO.%d \n ',snr_dB(s),i);
+        G_i = channel_1(:,:,:,i);
+        R_i = channel_2(:,:,:,i);
+        AR_G_irs = ar_RIS(:,:,i);
+        AT_R_irs = at_RIS(:,:,i);
+        gain_G_path = alpha(:,i);
+        gain_R_path = beta(:,i);
+        [H_man,v_man] = test_Mani_0714(R_i,G_i,M,Ns,AR_G_irs,gain_G_path,gain_R_path,AT_R_irs,trans_Pt,sigma2,Nk);
+    
+    %% hybrid precoding
+        mode2 = 2; % 
+        snr = trans_Pt./sigma2./Ns;
+        [Cap_opt_pc, Cap_hyb_man] = Cap_Approx_pow(H_man,Nt_RF,Nr_RF,Ns,Nt,Nr,snr,mode2,Nk);
+        R_FD(s,i) = Cap_opt_man/Nk;
+        R_HB(s,i) = Cap_hyb_man/Nk;
+%         Condi_man = Cal_condi(H_man,Ns);
+    end
+    ASE_FD(s)=sum(R_FD(s,:))/realization;
+    ASE_HB(s)=sum(R_HB(s,:))/realization;
+    fprintf('------------------------------------\n');
+end
+
+%% Plot figure
+figure(1); 
+SNR = linspace(-10,20,7);
+hold on;
+plot(SNR,ASE_FD,'-^','color',[1 0 0],'LineWidth',1.5);
+plot(SNR,ASE_HB,'-o','color',[0 144 189]/255,'LineWidth',1.5);
+
+axis([-10, 20, 0, 50]);
+set(gca,'FontSize',12);
+% title('Average Spectral Efficiency vs. SNR Performance (N_{RIS} = 64)','FontSize',14);
+xlabel('SNR (dB)','FontSize',14);
+ylabel('Average Spectral Efficiency (bit/s/Hz)','FontSize',14);
+legend('ASE-FD','ASE-HB','FontSize',12);
+
+grid on;
+
+display(abs(ASE_FD));
+display(abs(ASE_HB));
+
