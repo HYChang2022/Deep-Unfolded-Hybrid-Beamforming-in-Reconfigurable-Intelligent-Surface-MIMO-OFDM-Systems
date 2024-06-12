@@ -60,10 +60,12 @@
 5. Run the script.
 
 ## Hardware Specifications:
-| ----- | --------------------- |
-| CPU   |  Intel Core i7-12700  |
-| RAM   |    DDR4-3200 64GB     |
-| GPU   |   Nvidia RTX 3060 Ti  |
+| Component | Specification       |
+|-----------|---------------------|
+| CPU       | Intel Core i7-12700 |
+| RAM       | DDR4-3200 64GB      |
+| GPU       | Nvidia RTX 3060 Ti  |
+
 
 ### Python Environment:
 | Name             | Version |
